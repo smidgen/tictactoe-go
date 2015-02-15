@@ -1,17 +1,39 @@
+/*
+	Tic-Tac-Toe web app
+	By Nolan Ching <nolan@nolanching.com>
+
+	This program allows the user to play against another player or against
+	the computer. If the computer is a player, it uses the Minimax algorithm
+	to beat its opponent every time. It allows the user to pick whether the
+	computer goes first or not.
+
+	The program is optimized for speed, using alpha-beta pruning to prevent
+	the algorithm from uselessly examining too many future moves.
+*/
+
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
+	"runtime/debug"
+)
+
+const (
+	DEBUG	= true
+	BLANK	= 0
+	X		= 1
+	O		= 2
+	DRAW	= 3
 )
 
 type GameState struct {
 	GameType       string
-	Board          string
-	NextTurn       rune
+	Board          *Board
+	NextTurn       uint8
 	IsComputerTurn bool
-	Winner         rune
 }
 
 type TicTacToe struct{}
@@ -20,6 +42,17 @@ func (self *TicTacToe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	output := NewOutput(true)
 	defer output.WriteTo(w)
+
+	defer func() {
+		if r := recover(); r != nil {
+			output.Add(fmt.Sprint("Error: ", r))
+			if DEBUG {
+				output.Add(`<pre>`)
+				output.AddBytes(debug.Stack())
+				output.Add(`</pre>`)
+			}
+		}
+	}()
 
 	state := self.ParseParams(r.URL.Path)
 
@@ -36,187 +69,112 @@ func (self *TicTacToe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			roboMessage = "No fair, you cheated!"
 		}
 	}
-	state.Winner = self.CheckWin(state.Board)
 
-	self.RenderBoard(state, roboMessage, output)
+	state.Board.RenderHTML(output, state.GameType, state.NextTurn, roboMessage)
 }
 
 func (self *TicTacToe) ParseParams(urlpath string) *GameState {
 
-	var params []string = strings.SplitN(urlpath, "/", 3)
+	var params []string = strings.SplitN(urlpath, "/", 4)
 
-	state := &GameState{
-		"c",
-		"_________",
-		'X',
-		true,
-		'_',
-	}
+	state := new(GameState)
+	state.GameType = "p"
+	var size uint8 = 3
 
-	xCount := 0
-	oCount := 0
-	if len(params) >= 2 {
-		if params[1] != "c" {
-			state.GameType = "p"
-			state.IsComputerTurn = false
+	if len(params) >= 3 {
+		if params[1] != "p" {
+			state.GameType = "c"
+			state.IsComputerTurn = true
 		}
-		if len(params) == 3 {
-			if len(params[2]) == 9 {
-				state.Board = strings.ToUpper(params[2])
-				for i := 0; i < 9; i++ { // Expect all characters to be 8-bit ASCII
-					if state.Board[i] == 'X' {
-						xCount++
-					} else if state.Board[i] == 'O' {
-						oCount++
-					}
-				}
-			}
+		switch params[2] {
+			case `3`: size = 3
+			case `4`: size = 4
+			case `5`: size = 5
+		}
+		if len(params) == 4 {
+			state.Board, state.NextTurn = NewBoard(params[3], size)
 		} else {
 			// If no board in URL, human wants to go first.
 			state.IsComputerTurn = false
 		}
 	}
 
-	if oCount < xCount {
-		state.NextTurn = 'O'
+	if state.Board == nil {
+		state.Board = NewBlankBoard(size)
+		state.NextTurn = X
 	}
 
 	return state
 }
 
 func (self *TicTacToe) ComputerMove(state *GameState) int8 {
-	var miniMax func(player rune, board string, alpha int8, beta int8) (string, int8)
-	miniMax = func(player rune, board string, alpha int8, beta int8) (string, int8) {
-		result := self.CheckWin(board)
-		if result != '_' {
-			if result == player {
-				return board, 1 // win
-			} else {
-				return board, -1 // lose
-			}
-		} else if !strings.ContainsRune(board, '_') {
-			return board, 0 // draw
-		}
 
-		enemy := 'X'
-		if player == 'X' {
-			enemy = 'O'
-		}
-
-		var bestMove string
-
-		// $bestMoveValue represents the best possible choice score we can make during this round.
-		// We start with something lower than -1, so even if we
-		// end up losing, we'll still end up making a move.
-		var bestMoveValue int8 = -2;
-
-		for i := 0; i < 9; i++ {
-			if board[i] == '_' { // for each possible move
-				// figure out what the resulting board looks like
-				move := []byte(board)
-				move[i] = byte(player)
-
-				// what is the worst possible move the enemy can do to me?
-				// (also happens to be the best move for that enemy)
-				_, moveValue := miniMax(enemy, string(move), beta, alpha)
-
-				// This is a zero-sum game: a win for me is a lose for you, and vice versa.
-				moveValue = -moveValue
-
-				// if the worst the enemy can do to me is better than the the worst he can do
-				// to me if I pick another square, then this square is better than that one.
-				if moveValue > bestMoveValue {
-					bestMove = string(move)
-					bestMoveValue = moveValue
-					alpha = moveValue
-				}
-
-				// If this path is better for me than a path the enemy has already examined,
-				// he's not going to pick this path anyway, so we might as well not look at
-				// the rest of our options.
-				if -alpha < beta {
-					break
-				}
-			}
-		}
-
-		return bestMove, bestMoveValue
+	bestMove, bestMoveValue := NegaMax(state.NextTurn, state.Board, -2, -2)
+	if bestMove != -1 {
+		(*state.Board)[bestMove] = state.NextTurn
 	}
 
-	newBoard, bestMoveValue := miniMax(state.NextTurn, state.Board, -2, -2)
-	state.Board = newBoard
+	state.NextTurn = (state.NextTurn % 2) + 1
 
-	if state.NextTurn == 'X' {
-		state.NextTurn = 'O'
-	} else {
-		state.NextTurn = 'X'
-	}
 	return bestMoveValue
 }
 
-func (self *TicTacToe) CheckWin(b string) rune {
 
-	if 'X' == b[0] && 'X' == b[1] && 'X' == b[2] ||
-		'X' == b[3] && 'X' == b[4] && 'X' == b[5] ||
-		'X' == b[6] && 'X' == b[7] && 'X' == b[8] ||
-		'X' == b[0] && 'X' == b[3] && 'X' == b[6] ||
-		'X' == b[1] && 'X' == b[4] && 'X' == b[7] ||
-		'X' == b[2] && 'X' == b[5] && 'X' == b[8] ||
-		'X' == b[0] && 'X' == b[4] && 'X' == b[8] ||
-		'X' == b[2] && 'X' == b[4] && 'X' == b[6] {
-		return 'X'
-	} else if 'O' == b[0] && 'O' == b[1] && 'O' == b[2] ||
-		'O' == b[3] && 'O' == b[4] && 'O' == b[5] ||
-		'O' == b[6] && 'O' == b[7] && 'O' == b[8] ||
-		'O' == b[0] && 'O' == b[3] && 'O' == b[6] ||
-		'O' == b[1] && 'O' == b[4] && 'O' == b[7] ||
-		'O' == b[2] && 'O' == b[5] && 'O' == b[8] ||
-		'O' == b[0] && 'O' == b[4] && 'O' == b[8] ||
-		'O' == b[2] && 'O' == b[4] && 'O' == b[6] {
-		return 'O'
-	} else {
-		return '_'
-	}
-}
+func NegaMax(player uint8, board *Board, alpha int8, beta int8) (int, int8) {
+	result := board.CheckWin()
 
-func (self *TicTacToe) RenderBoard(state *GameState, roboMessage string, output *Output) {
+	var enemy uint8 = (player % 2) + 1
 
-	output.Add(`<p style="font-weight: bold;">`)
-	if state.Winner != '_' {
-		output.Add(`The winner is `, string(state.Winner))
-	} else if !strings.ContainsRune(state.Board, '_') {
-		output.Add(`It's a draw!`)
-	} else {
-		output.Add(`It is now Player `, string(state.NextTurn), `'s turn.`)
-	}
-	output.Add("</p>\n")
-	if len(roboMessage) > 0 {
-		output.Add(`<p>`, roboMessage, "</p>\n")
+	if result == player { // win
+		return -1, 1
+	} else if result == enemy { // lose
+		return -1, -1
+	} else if result == DRAW {
+		return -1, 0
 	}
 
-	output.Add(`<div class="board">`)
+	var bestMove int = -1
 
-	for i := 0; i < 9; i++ {
-		if state.Board[i] == '_' && state.Winner == '_' {
-			newBoard := []byte(state.Board)
-			newBoard[i] = byte(state.NextTurn)
-			output.Add(`<a rel="nofollow" href="/`, state.GameType, `/`, string(newBoard), `">`, string(state.NextTurn), `</a>`)
-		} else {
-			output.Add(`<span>`)
-			if state.Board[i] != '_' {
-				output.Add(string(state.Board[i]))
-			} else {
-				output.Add(`&nbsp;`)
+	// bestMoveValue represents the best possible choice score we can make during this round.
+	// We start with something lower than -1, so even if we
+	// end up losing, we'll still end up making a move.
+	var bestMoveValue int8 = -2;
+
+	for i := 0; i < len(*board); i++ {
+		if (*board)[i] == BLANK { // for each possible move
+			(*board)[i] = player // make the move
+
+			// what is the worst possible move the enemy can do to me?
+			// (also happens to be the best move for that enemy)
+			_, moveValue := NegaMax(enemy, board, beta, alpha)
+
+			(*board)[i] = BLANK // undo the move
+
+			// This is a zero-sum game: a win for me is a lose for you, and vice versa.
+			moveValue = -moveValue
+
+			// if the worst the enemy can do to me is better than the the worst he can do
+			// to me if I pick another square, then this square is better than that one.
+			if moveValue > bestMoveValue {
+				bestMove = i
+				bestMoveValue = moveValue
+				alpha = moveValue
 			}
-			output.Add(`</span>`)
+
+			// If this branch is better for me than a branch the enemy has already examined,
+			// he's not going to pick this branch anyway, so we might as well not look at
+			// the rest of our options.
+			if -alpha < beta {
+				break
+			}
 		}
 	}
 
-	output.Add("</div>\n")
+	return bestMove, bestMoveValue
 }
 
 func main() {
 
 	http.Handle("/", &TicTacToe{})
-	log.Fatal(http.ListenAndServe("localhost:4000", nil))
+	log.Fatal(http.ListenAndServe(":4000", nil))
 }

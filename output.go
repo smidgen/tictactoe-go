@@ -33,6 +33,13 @@ func (out *Output) Add(s ...string) *Output {
 	return out
 }
 
+func (out *Output) AddBytes(b ...[]byte) *Output {
+	for _, bytes := range b {
+		out.mainBuffer.Write(bytes)
+	}
+	return out
+}
+
 func (out *Output) AddToHead(s ...string) *Output {
 	for _, str := range s {
 		out.headBuffer.WriteString(str)
@@ -110,7 +117,15 @@ func (out *Output) WriteTo(w io.Writer) int64 {
 			font-size: 50pt;
 			text-align: center;
 			border: 1px solid black;
+		}
+		.board3 {
 			width: 303px;
+		}
+		.board4 {
+			width: 404px;
+		}
+		.board5 {
+			width: 505px;
 		}
 		.board span {
 			display: inline-block;
@@ -129,9 +144,17 @@ func (out *Output) WriteTo(w io.Writer) int64 {
 <body>
 <h3>Tic Tac Toe</h3>
 
-<p>New Game: <a rel="nofollow" href="/c">Player vs. Computer</a>
- - <a rel="nofollow" href="/c/_________">Computer vs. Player</a>
- - <a rel="nofollow" href="/p">Player vs. Player</a></p>
+<p>New 3x3 Game:	<a rel="nofollow" href="/c/3">Player vs. Computer</a>
+			&bull;	<a rel="nofollow" href="/c/3/_________">Computer vs. Player</a>
+			&bull;	<a rel="nofollow" href="/p/3">Player vs. Player</a></p>
+
+<p>New 4x4 Game:	<a rel="nofollow" href="/c/4">Player vs. Computer</a>
+			&bull;	<a rel="nofollow" href="/c/4/________________">Computer vs. Player</a>
+			&bull;	<a rel="nofollow" href="/p/4">Player vs. Player</a></p>
+
+<p>New 5x5 Game:	<a rel="nofollow" href="/c/5">Player vs. Computer</a>
+			&bull;	<a rel="nofollow" href="/c/5/_________________________">Computer vs. Player</a>
+			&bull;	<a rel="nofollow" href="/p/5">Player vs. Player</a></p>
 
 `
 		processReturns(w.Write([]byte(next)))
