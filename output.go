@@ -92,6 +92,7 @@ func (out *Output) WriteTo(w io.Writer) int64 {
 <head>
 	<title>Tic Tac Toe</title>
 	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<meta name="author" content="Nolan Ching" />
 	<style type="text/css">
 		body {
@@ -104,10 +105,6 @@ func (out *Output) WriteTo(w io.Writer) int64 {
 			display: inline-block;
 			color: transparent;
 			text-decoration: none;
-			line-height: 75px;
-			padding-top: 12px;
-			padding-bottom: 12px;
-			width: 99px;
 			border: 1px solid black;
 		}
 		.board a:hover {
@@ -118,22 +115,39 @@ func (out *Output) WriteTo(w io.Writer) int64 {
 			text-align: center;
 			border: 1px solid black;
 		}
-		.board3 {
-			width: 303px;
-		}
-		.board4 {
-			width: 404px;
-		}
-		.board5 {
-			width: 505px;
-		}
 		.board span {
 			display: inline-block;
-			line-height: 75px;
+			border: 1px solid black;
+		}
+		.board3 {
+			font-size: 80pt;
+			width: 399px;
+		}
+		.board3 a, .board3 span {
+			width: 131px;
+			line-height: 97px;
+			padding-top: 17px;
+			padding-bottom: 17px;
+		}
+		.board4 {
+			font-size: 60pt;
+			width: 400px;
+		}
+		.board4 a, .board4 span {
+			width: 98px;
+			line-height: 74px;
 			padding-top: 12px;
 			padding-bottom: 12px;
-			width: 99px;
-			border: 1px solid black;
+		}
+		.board5 {
+			font-size: 50pt;
+			width: 400px;
+		}
+		.board5 a, .board5 span {
+			width: 78px;
+			line-height: 62px;
+			padding-top: 8px;
+			padding-bottom: 8px;
 		}
 	</style>
 `
@@ -143,6 +157,13 @@ func (out *Output) WriteTo(w io.Writer) int64 {
 
 <body>
 <h3>Tic Tac Toe</h3>
+`
+		processReturns(w.Write([]byte(next)))
+	}
+
+	if out.includeFooter {
+		out.mainBuffer.WriteString(`
+<br /><br />
 
 <p>New 3x3 Game:	<a rel="nofollow" href="/c/3">Player vs. Computer</a>
 			&bull;	<a rel="nofollow" href="/c/3/_________">Computer vs. Player</a>
@@ -155,15 +176,9 @@ func (out *Output) WriteTo(w io.Writer) int64 {
 <p>New 5x5 Game:	<a rel="nofollow" href="/c/5">Player vs. Computer</a>
 			&bull;	<a rel="nofollow" href="/c/5/_________________________">Computer vs. Player</a>
 			&bull;	<a rel="nofollow" href="/p/5">Player vs. Player</a></p>
-
-`
-		processReturns(w.Write([]byte(next)))
-	}
-
-	if out.includeFooter {
-		out.mainBuffer.WriteString("\n\n<br /><br />")
+`)
 		out.mainBuffer.WriteString(fmt.Sprintf("<footer>&#169; %v Nolan Ching</footer>", time.Now().Year()))
-		out.footBuffer.WriteString("\n</body>\n</html>")
+		out.footBuffer.WriteString("\n</body>\n</html>\n")
 	}
 	processReturns64(out.mainBuffer.WriteTo(w))
 	processReturns64(out.footBuffer.WriteTo(w))

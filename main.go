@@ -22,11 +22,11 @@ import (
 )
 
 const (
-	DEBUG = true
-	BLANK = 0
-	X     = 1
-	O     = 2
-	DRAW  = 3
+	DEBUG      = true
+	BLANK      = 0
+	X          = 1
+	O          = 2
+	DRAW       = 3
 )
 
 type GameState struct {
@@ -59,13 +59,15 @@ func (self *TicTacToe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var roboMessage string
 
 	if state.IsComputerTurn {
-		result := self.ComputerMove(state)
-		switch result {
-		case 1:
-			roboMessage = "Nice try, human, but I am going to win."
-		case 0:
-			roboMessage = "If you're smart, you can still make it a draw, but you can't win."
-		case -1:
+		result, depth, remaining := self.ComputerMove(state)
+		switch {
+		case result == 1:
+			roboMessage = "Nice try, human, but I am going to win. I'm looking "+fmt.Sprint(depth)+" moves ahead. The end is in sight!"
+		case result == 0 && depth >= remaining:
+			roboMessage = "If you're smart, you can still make it a draw, but you can't win. Believe me, I can see all possible moves!"
+		case result == 0:
+			roboMessage = "I think it's gonna be a draw... not sure yet. I'm looking "+fmt.Sprint(depth)+" moves ahead; how 'bout you?"
+		case result == -1:
 			roboMessage = "No fair, you cheated!"
 		}
 	}
@@ -110,19 +112,35 @@ func (self *TicTacToe) ParseParams(urlpath string) *GameState {
 	return state
 }
 
-func (self *TicTacToe) ComputerMove(state *GameState) int8 {
+func (self *TicTacToe) ComputerMove(state *GameState) (int8, uint8, uint8) {
 
-	bestMove, bestMoveValue := NegaMax(state.NextTurn, state.Board, -2, -2)
+	var remaining uint8
+	for _, spot := range *state.Board {
+		if spot == BLANK {
+			remaining++
+		}
+	}
+	var searchDepth uint8
+	switch {
+		case remaining <=  9: searchDepth = 9
+		case remaining <= 10: searchDepth = 8
+		case remaining <= 11: searchDepth = 7
+		case remaining <= 12: searchDepth = 6
+		case remaining <= 16: searchDepth = 5
+		case remaining <= 26: searchDepth = 4
+	}
+
+	bestMove, bestMoveValue := NegaMax(state.NextTurn, state.Board, -2, -2, searchDepth)
 	if bestMove != -1 {
 		(*state.Board)[bestMove] = state.NextTurn
 	}
 
 	state.NextTurn = (state.NextTurn % 2) + 1
 
-	return bestMoveValue
+	return bestMoveValue, searchDepth, remaining
 }
 
-func NegaMax(player uint8, board *Board, alpha int8, beta int8) (int, int8) {
+func NegaMax(player uint8, board *Board, alpha int8, beta int8, depth uint8) (int, int8) {
 	result := board.CheckWin()
 
 	var enemy uint8 = (player % 2) + 1
@@ -131,7 +149,7 @@ func NegaMax(player uint8, board *Board, alpha int8, beta int8) (int, int8) {
 		return -1, 1
 	} else if result == enemy { // lose
 		return -1, -1
-	} else if result == DRAW {
+	} else if result == DRAW || depth <= 0 {
 		return -1, 0
 	}
 
@@ -148,7 +166,7 @@ func NegaMax(player uint8, board *Board, alpha int8, beta int8) (int, int8) {
 
 			// what is the worst possible move the enemy can do to me?
 			// (also happens to be the best move for that enemy)
-			_, moveValue := NegaMax(enemy, board, beta, alpha)
+			_, moveValue := NegaMax(enemy, board, beta, alpha, depth-1)
 
 			(*board)[i] = BLANK // undo the move
 
