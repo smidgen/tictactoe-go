@@ -22,11 +22,11 @@ import (
 )
 
 const (
-	DEBUG      = true
-	BLANK      = 0
-	X          = 1
-	O          = 2
-	DRAW       = 3
+	DEBUG = true
+	BLANK = 0
+	X     = 1
+	O     = 2
+	DRAW  = 3
 )
 
 type GameState struct {
@@ -62,11 +62,11 @@ func (self *TicTacToe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result, depth, remaining := self.ComputerMove(state)
 		switch {
 		case result == 1:
-			roboMessage = "Nice try, human, but I am going to win. I'm looking "+fmt.Sprint(depth)+" moves ahead. The end is in sight!"
+			roboMessage = "Nice try, human, but I am going to win. I'm looking " + fmt.Sprint(depth) + " moves ahead. The end is in sight!"
 		case result == 0 && depth >= remaining:
 			roboMessage = "If you're smart, you can still make it a draw, but you can't win. Believe me, I can see all possible moves!"
 		case result == 0:
-			roboMessage = "I think it's gonna be a draw... not sure yet. I'm looking "+fmt.Sprint(depth)+" moves ahead; how 'bout you?"
+			roboMessage = "I think it's gonna be a draw... not sure yet. I'm looking " + fmt.Sprint(depth) + " moves ahead; how 'bout you?"
 		case result == -1:
 			roboMessage = "No fair, you cheated!"
 		}
@@ -122,12 +122,18 @@ func (self *TicTacToe) ComputerMove(state *GameState) (int8, uint8, uint8) {
 	}
 	var searchDepth uint8
 	switch {
-		case remaining <=  9: searchDepth = 9
-		case remaining <= 10: searchDepth = 8
-		case remaining <= 11: searchDepth = 7
-		case remaining <= 12: searchDepth = 6
-		case remaining <= 16: searchDepth = 5
-		case remaining <= 26: searchDepth = 4
+	case remaining <= 9:
+		searchDepth = 9
+	case remaining <= 10:
+		searchDepth = 8
+	case remaining <= 11:
+		searchDepth = 7
+	case remaining <= 12:
+		searchDepth = 6
+	case remaining <= 16:
+		searchDepth = 5
+	case remaining <= 26:
+		searchDepth = 4
 	}
 
 	bestMove, bestMoveValue := NegaMax(state.NextTurn, state.Board, -2, -2, searchDepth)
