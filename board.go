@@ -8,7 +8,7 @@ type Board []byte
 
 func NewBlankBoard(size uint8) *Board {
 	if size < 3 || size > 5 {
-		panic("Unsupported board size: "+fmt.Sprint(size))
+		panic("Unsupported board size: " + fmt.Sprint(size))
 	}
 
 	b := make(Board, size*size)
@@ -43,9 +43,12 @@ func NewBoard(encodedBoard string, size uint8) (b *Board, nextTurn uint8) {
 
 func (b *Board) Size() uint8 {
 	switch len(*b) {
-		case 9:		return 3
-		case 16:	return 4
-		case 25:	return 5
+	case 9:
+		return 3
+	case 16:
+		return 4
+	case 25:
+		return 5
 	}
 	panic("Invalid board length")
 }
@@ -54,14 +57,13 @@ func (b *Board) Length() int {
 	return len(*b)
 }
 
-
 func (b *Board) CheckWin() uint8 {
 	size := b.Size()
 
 	var xWins bool
 	var oWins bool
 
-	type loopParams struct{
+	type loopParams struct {
 		iTo,
 		iIncrement,
 		jFrom,
@@ -70,10 +72,10 @@ func (b *Board) CheckWin() uint8 {
 	}
 
 	tictactoeWinPatterns := [4]loopParams{
-		loopParams{size*size,	size,	0,		size,		1},		// rows
-		loopParams{size,		1,		0,		size*size,	size},	// columns
-		loopParams{1,			1,		0,		size*size,	size+1},// diagonal top-left to right-bottom
-		loopParams{1,			1,		size-1,	size*size-1,size-1},// diagonal top-right to left-bottom
+		loopParams{size * size, size, 0, size, 1},           // rows
+		loopParams{size, 1, 0, size * size, size},           // columns
+		loopParams{1, 1, 0, size * size, size + 1},          // diagonal top-left to right-bottom
+		loopParams{1, 1, size - 1, size*size - 1, size - 1}, // diagonal top-right to left-bottom
 	}
 
 	for _, params := range tictactoeWinPatterns {
@@ -115,17 +117,16 @@ func (b *Board) Encode() string {
 	var buf = make([]byte, len(*b))
 	for i, value := range *b {
 		switch value {
-			case X:
-				buf[i] = 'X'
-			case O:
-				buf[i] = 'O'
-			case BLANK :
-				buf[i] = '_'
+		case X:
+			buf[i] = 'X'
+		case O:
+			buf[i] = 'O'
+		case BLANK:
+			buf[i] = '_'
 		}
 	}
 	return string(buf)
 }
-
 
 func (b *Board) RenderHTML(output *Output, gameType string, turn uint8, message string) {
 
@@ -173,4 +174,3 @@ func (b *Board) RenderHTML(output *Output, gameType string, turn uint8, message 
 
 	output.Add("</div>\n")
 }
-

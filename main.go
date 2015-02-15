@@ -17,16 +17,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"runtime/debug"
+	"strings"
 )
 
 const (
-	DEBUG	= true
-	BLANK	= 0
-	X		= 1
-	O		= 2
-	DRAW	= 3
+	DEBUG = true
+	BLANK = 0
+	X     = 1
+	O     = 2
+	DRAW  = 3
 )
 
 type GameState struct {
@@ -87,9 +87,12 @@ func (self *TicTacToe) ParseParams(urlpath string) *GameState {
 			state.IsComputerTurn = true
 		}
 		switch params[2] {
-			case `3`: size = 3
-			case `4`: size = 4
-			case `5`: size = 5
+		case `3`:
+			size = 3
+		case `4`:
+			size = 4
+		case `5`:
+			size = 5
 		}
 		if len(params) == 4 {
 			state.Board, state.NextTurn = NewBoard(params[3], size)
@@ -119,7 +122,6 @@ func (self *TicTacToe) ComputerMove(state *GameState) int8 {
 	return bestMoveValue
 }
 
-
 func NegaMax(player uint8, board *Board, alpha int8, beta int8) (int, int8) {
 	result := board.CheckWin()
 
@@ -138,7 +140,7 @@ func NegaMax(player uint8, board *Board, alpha int8, beta int8) (int, int8) {
 	// bestMoveValue represents the best possible choice score we can make during this round.
 	// We start with something lower than -1, so even if we
 	// end up losing, we'll still end up making a move.
-	var bestMoveValue int8 = -2;
+	var bestMoveValue int8 = -2
 
 	for i := 0; i < len(*board); i++ {
 		if (*board)[i] == BLANK { // for each possible move
